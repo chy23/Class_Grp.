@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教學用學生分組工具</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 SortableJS 用於處理拖曳功能 -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <!-- 引入 html2canvas 用於匯出圖片 -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <!-- 引入 canvas-confetti 用於歡樂灑花特效 -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ios: {
+                            blue: '#007AFF',
+                            blueLight: '#E5F0FF',
+                            pink: '#FF2D55',
+                            pinkLight: '#FFE5EB',
+                            gray: '#8E8E93',
+                            grayBg: '#E5E5EA',
+                            inputBg: 'rgba(118, 118, 128, 0.1)'
+                        }
+                    },
+                    animation: {
+                        'pop-in': 'pop-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+                    },
+                    keyframes: {
+                        'pop-in': {
+                            '0%': { opacity: '0', transform: 'scale(0.85)' },
+                            '100%': { opacity: '1', transform: 'scale(1)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, "Microsoft JhengHei", sans-serif;
+            -webkit-font-smoothing: antialiased;
+            background-color: #F2F2F7;
+            color: #1C1C1E;
+        }
+
+        .sortable-ghost {
+            opacity: 0.3;
+            background-color: #E5E5EA;
+            transform: scale(0.9);
+            border-radius: 9999px;
+        }
+        
+        .student-pill {
+            cursor: grab;
+            transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1);
+        }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .empty-group-state:empty::before {
+            content: "拖曳學生至此";
+            color: #A1A1A6;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            min-height: 80px;
+            pointer-events: none;
+            font-weight: 600;
+        }
+
+        .bg-orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(100px);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+    </style>
+</head>
+<body class="min-h-screen relative p-4 md:p-8">
+
+    <!-- iOS 26 空間感背景光暈 -->
+    <div class="bg-orb bg-[#FFD1E3]/50 w-[50vw] h-[50vw] top-[-10%] left-[-10%]"></div>
+    <div class="bg-orb bg-[#D1E8FF]/50 w-[60vw] h-[60vw] bottom-[-20%] right-[-10%]"></div>
+    <div class="bg-orb bg-[#D1FFDF]/40 w-[40vw] h-[40vw] top-[20%] right-[10%]"></div>
+
+    <div id="main-container" class="max-w-6xl mx-auto space-y-6 relative z-10">
+        
+        <!-- 標題區 -->
+        <header class="bg-white/60 backdrop-blur-3xl p-8 rounded-[32px] shadow-sm border border-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-center md:text-left">
+            <div>
+                <h1 class="text-3xl font-extrabold tracking-tight mb-2 text-[#1C1C1E]">🧑🏫 學生分組工具</h1>
+                <p class="text-ios-gray text-base font-medium">手動優先，智能分配。支援 TXT 與海報圖檔匯出。</p>
+            </div>
+        </header>
+
+        <!-- 第一區：基礎設定 -->
+        <section class="bg-white/60 backdrop-blur-3xl p-6 md:p-8 rounded-[32px] shadow-sm border border-white">
+            <h2 class="text-xl font-bold mb-6 tracking-tight flex items-center gap-2">⚙️ 基礎設定</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-sm font-bold text-ios-gray mb-1.5 ml-1">總人數</label>
+                    <div class="flex items-center bg-white/40 border border-white rounded-[20px] p-1 shadow-sm">
+                        <button id="btn-dec-total" class="w-10 h-10 rounded-2xl bg-white shadow-sm text-ios-blue font-bold text-xl active:scale-90 transition-transform">-</button>
+                        <input type="number" id="total-students" value="28" min="1" class="flex-1 bg-transparent border-none text-center font-bold text-lg outline-none">
+                        <button id="btn-inc-total" class="w-10 h-10 rounded-2xl bg-white shadow-sm text-ios-blue font-bold text-xl active:scale-90 transition-transform">+</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-ios-gray mb-1.5 ml-1">剔除空號</label>
+                    <input type="text" id="excluded-students" placeholder="4, 14..." class="w-full h-[52px] bg-white/40 border border-white rounded-[20px] px-4 font-bold text-lg outline-none focus:ring-2 focus:ring-ios-blue transition-all">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-ios-gray mb-1.5 ml-1">分成幾組</label>
+                    <div class="flex items-center bg-white/40 border border-white rounded-[20px] p-1 shadow-sm">
+                        <button id="btn-dec-groups" class="w-10 h-10 rounded-2xl bg-white shadow-sm text-ios-blue font-bold text-xl active:scale-90 transition-transform">-</button>
+                        <input type="number" id="num-groups" value="4" min="1" class="flex-1 bg-transparent border-none text-center font-bold text-lg outline-none">
+                        <button id="btn-inc-groups" class="w-10 h-10 rounded-2xl bg-white shadow-sm text-ios-blue font-bold text-xl active:scale-90 transition-transform">+</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-ios-gray mb-1.5 ml-1">分組模式</label>
+                    <select id="group-mode" class="w-full h-[52px] bg-white/40 border border-white rounded-[20px] px-4 font-bold text-lg outline-none cursor-pointer appearance-none shadow-sm">
+                        <option value="A">模式 A：全部分組</option>
+                        <option value="B">模式 B：男女分組</option>
+                    </select>
+                </div>
+            </div>
+            <button id="btn-apply-setup" class="mt-6 bg-ios-blue text-white font-bold py-4 px-8 rounded-2xl shadow-lg shadow-ios-blue/20 active:scale-95 transition-all w-full md:w-auto">套用設定並重置</button>
+
+            <div id="gender-setup-area" class="hidden mt-6 bg-white/30 p-5 rounded-[24px] border border-white/50">
+                <div id="gender-grid" class="flex flex-wrap gap-2.5"></div>
+            </div>
+        </section>
+
+        <!-- 第二區：分組工作台 -->
+        <section class="bg-white/60 backdrop-blur-3xl p-6 md:p-8 rounded-[32px] shadow-sm border border-white">
+            <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center pb-6 mb-6 gap-4 border-b border-black/5">
+                <h2 class="text-xl font-bold tracking-tight shrink-0 flex items-center gap-2">🔄 分組工作台</h2>
+                <div class="flex flex-wrap items-center gap-3 w-full xl:w-auto">
+                    <button id="btn-undo" class="bg-white text-ios-blue shadow-sm border border-black/5 font-bold py-3 px-5 rounded-[20px] active:scale-95 disabled:opacity-30">復原</button>
+                    <button id="btn-reset-groups" class="bg-white text-ios-pink shadow-sm border border-black/5 font-bold py-3 px-5 rounded-[20px] active:scale-95">全部退回</button>
+                    <div class="flex-1 xl:flex-none flex items-center gap-2 p-1.5 bg-white/50 rounded-[24px] border border-white shadow-inner w-full sm:w-auto">
+                        <select id="auto-algo-select" class="flex-1 bg-transparent font-bold text-sm px-4 outline-none appearance-none cursor-pointer"></select>
+                        <button id="btn-execute-auto" class="bg-ios-blue text-white font-bold py-2.5 px-6 rounded-[18px] shadow-md shadow-ios-blue/20 active:scale-95 transition-transform">✨ 自動分配 / 重洗</button>
+                    </div>
+                </div>
+            </div>
+            <div id="validation-warning" class="hidden mb-6 p-4 bg-[#FF3B30]/10 text-ios-red rounded-[20px] border border-[#FF3B30]/20 font-bold flex flex-col gap-1"></div>
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <div class="lg:col-span-1 bg-white/30 border border-white/50 rounded-[28px] p-5 flex flex-col max-h-[600px] shadow-sm">
+                    <h3 class="font-bold text-[#1C1C1E] mb-4 flex justify-between items-center text-[17px]">
+                        待分配 <span id="unassigned-count" class="bg-black/5 px-2.5 py-0.5 rounded-full text-xs">0</span>
+                    </h3>
+                    <div id="unassigned-list" class="flex-1 overflow-y-auto no-scrollbar flex flex-wrap gap-2.5 content-start min-h-[120px]"></div>
+                </div>
+                <div class="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-5" id="groups-container"></div>
+            </div>
+        </section>
+
+        <!-- 第三區：分組結果 -->
+        <section class="bg-white/60 backdrop-blur-3xl p-6 md:p-8 rounded-[32px] shadow-sm border border-white">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b border-black/5 pb-6 gap-4">
+                <h2 class="text-xl font-bold tracking-tight">📄 分組結果</h2>
+                <div class="flex gap-2 w-full sm:w-auto">
+                    <button id="btn-quick-img" class="flex-1 sm:flex-none bg-ios-blue text-white font-bold py-3 px-6 rounded-2xl active:scale-95 shadow-lg shadow-ios-blue/20">📸 匯出海報圖檔</button>
+                    <button id="btn-export-txt" class="flex-1 sm:flex-none bg-white text-[#1C1C1E] font-bold py-3 px-6 rounded-2xl active:scale-95 border border-black/5 shadow-sm">匯出 TXT</button>
+                </div>
+            </div>
+            <div id="text-output" class="bg-white/40 border border-white p-6 rounded-[24px] font-mono text-[16px] whitespace-pre-wrap shadow-inner min-h-[100px]"></div>
+        </section>
+    </div>
+
+    <!-- 圖片匯出模板 -->
+    <div id="a6-poster-template" style="position: absolute; left: -9999px; top: 0; width: 800px; min-height: 1131px; background: linear-gradient(135deg, #F2F2F7, #E5E5EA); padding: 60px; box-sizing: border-box; font-family: ui-rounded, sans-serif;">
+        <div style="position: absolute; top: -100px; left: -100px; width: 400px; height: 400px; background: rgba(255, 45, 85, 0.12); filter: blur(80px); border-radius: 50%;"></div>
+        <div style="position: absolute; bottom: -100px; right: -100px; width: 500px; height: 500px; background: rgba(0, 122, 255, 0.12); filter: blur(100px); border-radius: 50%;"></div>
+        
+        <div id="poster-shell" style="background: rgba(255,255,255,0.7); backdrop-filter: blur(60px); border-radius: 60px; padding: 45px; min-height: 1031px; border: 2px solid rgba(255,255,255,0.9); display: flex; flex-direction: column; box-shadow: 0 40px 80px rgba(0,0,0,0.08); position: relative; z-index: 10;">
+            <header style="text-align: center; margin-bottom: 40px;">
+                <h1 style="font-size: 52px; font-weight: 900; color: #1C1C1E; margin: 0; letter-spacing: -1px;">分組名單公告</h1>
+                <p id="poster-subtitle" style="font-size: 22px; font-weight: 600; color: #8E8E93; margin-top: 12px; background: rgba(0,0,0,0.05); padding: 8px 24px; border-radius: 14px; display: inline-block;"></p>
+                <p id="poster-time" style="font-size: 16px; font-weight: 700; color: #AEAEB2; margin-top: 10px;"></p>
+            </header>
+            <div id="poster-grid" style="display: grid; gap: 20px; align-content: start; flex: 1;">
+                <!-- 動態內容 -->
+            </div>
+            <footer style="text-align: center; margin-top: 40px; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 30px;">
+                <div style="font-size: 16px; font-weight: 800; color: #C7C7CC; letter-spacing: 2px;">Generated by Student Grouping Tool</div>
+            </footer>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * 狀態與元件初始化
+         */
+        const state = {
+            total: 28, excluded: [], numGroups: 4, mode: 'A',
+            students: {}, unassigned: [], groups: [],
+            lastValidationRule: 'normal', sortableInstances: [], history: []
+        };
+
+        const themes = [
+            { bg: 'rgba(255, 249, 230, 0.85)', border: 'rgba(255, 228, 138, 0.6)', text: '#B27B00' },
+            { bg: 'rgba(230, 248, 236, 0.85)', border: 'rgba(138, 230, 168, 0.6)', text: '#008A2E' },
+            { bg: 'rgba(230, 242, 255, 0.85)', border: 'rgba(138, 180, 248, 0.6)', text: '#0055D4' },
+            { bg: 'rgba(252, 232, 243, 0.85)', border: 'rgba(248, 138, 181, 0.6)', text: '#C20055' }
+        ];
+
+        const elements = {
+            totalInput: document.getElementById('total-students'),
+            excludedInput: document.getElementById('excluded-students'),
+            numGroupsInput: document.getElementById('num-groups'),
+            modeSelect: document.getElementById('group-mode'),
+            applyBtn: document.getElementById('btn-apply-setup'),
+            genderGrid: document.getElementById('gender-grid'),
+            autoAlgoSelect: document.getElementById('auto-algo-select'),
+            executeAutoBtn: document.getElementById('btn-execute-auto'),
+            warningBox: document.getElementById('validation-warning'),
+            unassignedList: document.getElementById('unassigned-list'),
+            unassignedCount: document.getElementById('unassigned-count'),
+            groupsContainer: document.getElementById('groups-container'),
+            textOutput: document.getElementById('text-output'),
+            exportTxtBtn: document.getElementById('btn-export-txt'), // 已更名
+            resetGroupsBtn: document.getElementById('btn-reset-groups'),
+            undoBtn: document.getElementById('btn-undo'),
+            quickImgBtn: document.getElementById('btn-quick-img'),
+            posterGrid: document.getElementById('poster-grid'),
+            posterSubtitle: document.getElementById('poster-subtitle'),
+            posterTime: document.getElementById('poster-time'),
+            posterShell: document.getElementById('poster-shell')
+        };
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function fireCelebration() {
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#007AFF', '#FF2D55', '#34C759', '#FF9500'] });
+        }
+
+        function saveState() {
+            state.history.push({
+                unassigned: [...state.unassigned],
+                groups: state.groups.map(g => [...g]),
+                students: JSON.parse(JSON.stringify(state.students)),
+                lastValidationRule: state.lastValidationRule
+            });
+            if (state.history.length > 20) state.history.shift();
+            elements.undoBtn.disabled = false;
+        }
+
+        function undo() {
+            if (state.history.length === 0) return;
+            const prev = state.history.pop();
+            state.unassigned = [...prev.unassigned];
+            state.groups = prev.groups.map(g => [...g]);
+            state.students = prev.students;
+            state.lastValidationRule = prev.lastValidationRule;
+            elements.undoBtn.disabled = state.history.length === 0;
+            renderWorkspace();
+        }
+
+        function initSetup() {
+            state.total = parseInt(elements.totalInput.value) || 28;
+            state.numGroups = parseInt(elements.numGroupsInput.value) || 4;
+            state.mode = elements.modeSelect.value;
+            state.excluded = elements.excludedInput.value.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+            state.students = {}; state.unassigned = [];
+            state.groups = Array.from({ length: state.numGroups }, () => []);
+            state.history = []; elements.undoBtn.disabled = true;
+
+            const valid = [];
+            for (let i = 1; i <= state.total; i++) if (!state.excluded.includes(i)) valid.push(i);
+            const mid = Math.ceil(valid.length / 2);
+            valid.forEach((id, idx) => {
+                state.students[id] = { id, gender: idx < mid ? 'M' : 'F', isAuto: false };
+                state.unassigned.push(id);
+            });
+            updateAlgoOptions(); renderGenderSetup(); renderWorkspace();
+        }
+
+        function renderGenderSetup() {
+            elements.genderGrid.innerHTML = '';
+            Object.keys(state.students).map(Number).sort((a,b)=>a-b).forEach(id => {
+                const s = state.students[id];
+                const btn = document.createElement('button');
+                btn.className = `w-11 h-11 rounded-full font-bold text-sm shadow-sm transition-all active:scale-90 ${s.gender==='M'?'bg-ios-blueLight text-ios-blue':'bg-ios-pinkLight text-ios-pink'}`;
+                btn.textContent = id;
+                btn.onclick = () => { s.gender = s.gender==='M'?'F':'M'; renderGenderSetup(); renderWorkspace(); };
+                elements.genderGrid.appendChild(btn);
+            });
+            document.getElementById('gender-setup-area').classList.toggle('hidden', state.mode==='A');
+        }
+
+        function getStudentHtml(id) {
+            const s = state.students[id];
+            const base = "student-pill inline-flex items-center justify-center w-[46px] h-[46px] rounded-full text-[17px] font-bold select-none relative bg-white shadow-sm border border-black/5 animate-pop-in";
+            let color = "text-[#1C1C1E]";
+            if (state.mode === 'B') color = s.gender === 'M' ? "bg-ios-blueLight text-ios-blue" : "bg-ios-pinkLight text-ios-pink";
+            return `<div class="${base} ${color}" data-id="${id}">${id}</div>`;
+        }
+
+        function renderWorkspace() {
+            state.sortableInstances.forEach(i => i.destroy()); state.sortableInstances = [];
+            elements.unassignedCount.textContent = state.unassigned.length;
+            elements.unassignedList.innerHTML = '';
+            state.unassigned.forEach(id => elements.unassignedList.insertAdjacentHTML('beforeend', getStudentHtml(id)));
+
+            elements.groupsContainer.innerHTML = '';
+            state.groups.forEach((group, idx) => {
+                const theme = themes[idx % 4];
+                const card = document.createElement('div');
+                card.className = `border rounded-[28px] flex flex-col bg-white overflow-hidden shadow-sm transition-all hover:shadow-md`;
+                card.style.borderColor = theme.border;
+                card.innerHTML = `
+                    <div class="bg-white flex justify-between items-center px-4 py-3 border-b" style="border-color:${theme.border}">
+                        <h4 class="font-extrabold text-sm" style="color:${theme.text}">第 ${idx+1} 組 (${group.length})</h4>
+                        <div class="flex gap-1.5"><input type="number" id="input-${idx}" class="w-14 text-center text-xs bg-black/5 rounded-xl py-1 outline-none focus:ring-1 focus:ring-ios-blue"><button class="bg-black/5 font-extrabold px-2 py-1 rounded-xl text-xs transition-colors hover:bg-black/10" onclick="manualAdd(${idx})">加</button></div>
+                    </div>
+                    <div id="list-${idx}" class="flex-1 min-h-[80px] p-4 flex flex-wrap gap-2.5 empty-group-state" style="background:${theme.bg}"></div>`;
+                elements.groupsContainer.appendChild(card);
+                const list = document.getElementById(`list-${idx}`);
+                group.forEach(id => list.insertAdjacentHTML('beforeend', getStudentHtml(id)));
+            });
+
+            initSortable(); validateGroups(); updateTextOutput();
+        }
+
+        function initSortable() {
+            const opts = { group: 's', animation: 250, easing: "cubic-bezier(0.2, 0, 0, 1)", ghostClass: 'sortable-ghost', onStart: saveState, onEnd: handleDragEnd };
+            state.sortableInstances.push(new Sortable(elements.unassignedList, { ...opts, id: 'unassigned-list' }));
+            state.groups.forEach((_, i) => state.sortableInstances.push(new Sortable(document.getElementById(`list-${i}`), { ...opts, id: `list-${i}` })));
+        }
+
+        function handleDragEnd(evt) {
+            if (evt.from === evt.to) { state.history.pop(); return; }
+            const id = parseInt(evt.item.dataset.id);
+            if (evt.from.id === 'unassigned-list') state.unassigned = state.unassigned.filter(x => x !== id);
+            else state.groups[parseInt(evt.from.id.replace('list-',''))] = state.groups[parseInt(evt.from.id.replace('list-',''))].filter(x => x !== id);
+            if (evt.to.id === 'unassigned-list') state.unassigned.push(id);
+            else state.groups[parseInt(evt.to.id.replace('list-',''))].push(id);
+            state.students[id].isAuto = false; renderWorkspace();
+        }
+
+        function updateAlgoOptions() {
+            elements.autoAlgoSelect.innerHTML = state.mode === 'A' 
+                ? `<option value="random">🎲 全隨機平均分配</option>` 
+                : `<option value="even">⚖️ 性別平均分配 (S型)</option><option value="single">👦👧 單一性別分配</option><option value="random">🎲 無視性別分配</option>`;
+        }
+
+        function executeAuto() {
+            saveState();
+            state.groups.forEach((g, i) => {
+                const manual = [];
+                g.forEach(id => { if(state.students[id].isAuto) state.unassigned.push(id); else manual.push(id); });
+                state.groups[i] = manual;
+            });
+            state.unassigned.sort((a,b)=>a-b);
+            const type = elements.autoAlgoSelect.value;
+            state.lastValidationRule = type;
+
+            if (type === 'random') {
+                shuffleArray(state.unassigned).forEach(id => {
+                    const min = Math.min(...state.groups.map(g => g.length));
+                    const targetIdx = state.groups.findIndex(g => g.length === min);
+                    state.groups[targetIdx].push(id);
+                    state.students[id].isAuto = true;
+                });
+            } else if (type === 'even') {
+                const m = shuffleArray(state.unassigned.filter(id => state.students[id].gender === 'M'));
+                const f = shuffleArray(state.unassigned.filter(id => state.students[id].gender === 'F'));
+                m.concat(f).forEach(id => {
+                    const min = Math.min(...state.groups.map(g => g.length));
+                    const targetIdx = state.groups.findIndex(g => g.length === min);
+                    state.groups[targetIdx].push(id);
+                    state.students[id].isAuto = true;
+                });
+            } else if (type === 'single') {
+                const m = shuffleArray(state.unassigned.filter(id=>state.students[id].gender==='M'));
+                const f = shuffleArray(state.unassigned.filter(id=>state.students[id].gender==='F'));
+                const tm = Math.round(state.numGroups * (Object.values(state.students).filter(s=>s.gender==='M').length / Object.keys(state.students).length));
+                const mIdx = [], fIdx = [], eIdx = [];
+                state.groups.forEach((g, i) => {
+                    if (g.length === 0) eIdx.push(i);
+                    else if (state.students[g[0]].gender === 'M') mIdx.push(i);
+                    else fIdx.push(i);
+                });
+                let nm = Math.max(0, tm - mIdx.length);
+                eIdx.forEach(i => { if(nm > 0) { mIdx.push(i); nm--; } else fIdx.push(i); });
+                m.forEach(id => { 
+                    if (mIdx.length > 0) {
+                        const target = mIdx.reduce((p, c) => state.groups[c].length < state.groups[p].length ? c : p);
+                        state.groups[target].push(id); state.students[id].isAuto=true; 
+                    } else state.unassigned.push(id);
+                });
+                f.forEach(id => { 
+                    if (fIdx.length > 0) {
+                        const target = fIdx.reduce((p, c) => state.groups[c].length < state.groups[p].length ? c : p);
+                        state.groups[target].push(id); state.students[id].isAuto=true; 
+                    } else state.unassigned.push(id);
+                });
+            }
+            state.unassigned = state.unassigned.filter(id => !state.groups.flat().includes(id));
+            const err = validateGroups(); if(!err && state.unassigned.length === 0) fireCelebration(); 
+            renderWorkspace();
+        }
+
+        function validateGroups() {
+            elements.warningBox.classList.add('hidden'); elements.warningBox.innerHTML = '';
+            let warnings = [];
+            if (state.mode === 'B' && state.lastValidationRule === 'single') {
+                const mS = [], fS = [];
+                state.groups.forEach(g => {
+                    if (g.length === 0) return;
+                    const gender = state.students[g[0]].gender;
+                    if (gender === 'M') mS.push(g.length); else fS.push(g.length);
+                });
+                if (mS.length > 1 && (Math.max(...mS) - Math.min(...mS) > 1)) warnings.push('⚠️ 男生各組人數不均');
+                if (fS.length > 1 && (Math.max(...fS) - Math.min(...fS) > 1)) warnings.push('⚠️ 女生各組人數不均');
+            } else {
+                const sizes = state.groups.map(g => g.length);
+                if (sizes.length > 0 && Math.max(...sizes) - Math.min(...sizes) > 1) warnings.push('⚠️ 各組總人數不均');
+            }
+            if (warnings.length > 0) {
+                elements.warningBox.innerHTML = warnings.map(w => `<span>${w}</span>`).join('');
+                elements.warningBox.classList.remove('hidden'); return true;
+            }
+            return false;
+        }
+
+        function updateTextOutput() {
+            elements.textOutput.textContent = state.groups.map((g,i) => `第 ${i+1} 組：${[...g].sort((a,b)=>a-b).join('、')}`).join('\n');
+        }
+
+        function exportToPoster() {
+            const btn = elements.quickImgBtn;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '✨ 智能排版中...';
+            
+            const now = new Date();
+            const timeStr = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+            
+            elements.posterSubtitle.textContent = `全班分為 ${state.numGroups} 組名單`;
+            elements.posterTime.textContent = `產出時間：${timeStr}`;
+            
+            let columns = 1;
+            if (state.numGroups > 4) columns = 2;
+            if (state.numGroups > 10) columns = 3;
+            elements.posterGrid.style.gridTemplateColumns = `repeat(${columns}, 1fr)`;
+
+            let titleSize = "30px";
+            let contentSize = "28px";
+            let paddingSize = "30px";
+
+            if (state.numGroups > 6) {
+                titleSize = "24px"; contentSize = "22px"; paddingSize = "20px";
+            }
+            if (state.numGroups > 12) {
+                titleSize = "18px"; contentSize = "16px"; paddingSize = "15px";
+            }
+
+            elements.posterGrid.innerHTML = '';
+            state.groups.forEach((g, i) => {
+                const theme = themes[i % 4];
+                const sorted = [...g].sort((a,b)=>a-b);
+                const item = document.createElement('div');
+                item.style.cssText = `background: ${theme.bg}; border-radius: 30px; padding: ${paddingSize}; border: 2px solid ${theme.border}; box-shadow: 0 10px 25px rgba(0,0,0,0.03); display: flex; flex-direction: column; gap: 10px;`;
+                item.innerHTML = `
+                    <div style="color:${theme.text}; font-size:${titleSize}; font-weight:900; display:flex; justify-content:space-between; align-items:center;">
+                        Group ${i+1} 
+                        <span style="font-size:0.7em; background:rgba(255,255,255,0.6); padding:4px 10px; border-radius:12px;">${g.length}人</span>
+                    </div>
+                    <div style="font-size:${contentSize}; font-weight:700; color:#1C1C1E; letter-spacing:1px; line-height:1.5; word-break: break-all;">
+                        ${sorted.join('、') || '---'}
+                    </div>`;
+                elements.posterGrid.appendChild(item);
+            });
+
+            setTimeout(() => {
+                html2canvas(document.getElementById('a6-poster-template'), { 
+                    scale: 2, useCORS: true, backgroundColor: null, scrollX: 0, scrollY: 0,
+                    onclone: (clonedDoc) => { clonedDoc.getElementById('a6-poster-template').style.left = "0"; }
+                }).then(canvas => {
+                    const link = document.createElement('a'); link.download = `分組海報_${Date.now()}.png`; 
+                    link.href = canvas.toDataURL('image/png'); link.click();
+                    btn.innerHTML = originalText;
+                }).catch(err => {
+                    btn.innerHTML = "❌ 匯出失敗";
+                    setTimeout(() => btn.innerHTML = originalText, 2000);
+                });
+            }, 200);
+        }
+
+        // TXT 匯出邏輯
+        elements.exportTxtBtn.onclick = () => {
+            const content = elements.textOutput.textContent;
+            if (!content.trim()) return alert("目前尚無分組結果可匯出。");
+            
+            // 使用帶有 BOM 的 UTF-8 確保記事本不亂碼
+            const blob = new Blob(['\ufeff', content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `分組結果_${Date.now()}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        };
+
+        elements.quickImgBtn.onclick = exportToPoster;
+        elements.applyBtn.onclick = initSetup;
+        elements.executeAutoBtn.onclick = executeAuto;
+        elements.undoBtn.onclick = undo;
+        elements.resetGroupsBtn.onclick = () => { 
+            saveState(); 
+            state.groups.forEach(g => state.unassigned.push(...g)); 
+            state.groups = Array.from({length:state.numGroups},()=>[]); 
+            state.unassigned.sort((a,b)=>a-b); 
+            renderWorkspace(); 
+        };
+        
+        const adj = (id, d) => { 
+            const i = document.getElementById(id); 
+            let v = parseInt(i.value)+d; 
+            if(v>=parseInt(i.min)) i.value=v; 
+        };
+        document.getElementById('btn-dec-total').onclick = () => adj('total-students', -1);
+        document.getElementById('btn-inc-total').onclick = () => adj('total-students', 1);
+        document.getElementById('btn-dec-groups').onclick = () => adj('num-groups', -1);
+        document.getElementById('btn-inc-groups').onclick = () => adj('num-groups', 1);
+
+        window.manualAdd = function(idx) {
+            const i = document.getElementById(`input-${idx}`);
+            const v = parseInt(i.value);
+            if(isNaN(v)) return;
+            const ui = state.unassigned.indexOf(v);
+            if(ui !== -1) {
+                saveState();
+                state.unassigned.splice(ui, 1);
+                state.groups[idx].push(v);
+                state.students[v].isAuto = false;
+                i.value = '';
+                renderWorkspace();
+            } else alert("座號不在名單中或已分配。");
+        };
+
+        initSetup();
+    </script>
+</body>
+</html>
