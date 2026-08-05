@@ -1,22 +1,27 @@
 <!DOCTYPE html>
 <!-- 網站建立自楊家驊老師 The website was created by Teacher ChiahuaYang -->
-<html lang="zh-TW">
+<html lang="zh-TW" class="">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="author" content="網站建立自楊家驊老師 The website was created by Teacher ChiahuaYang">
     <title>教學用學生分組工具</title>
+    <!-- 支援 PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#F2F2F7" id="theme-color-meta">
+    
     <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 引入 SortableJS 用於處理拖曳功能 -->
+    <!-- 引入 SortableJS -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
-    <!-- 引入 html2canvas 用於匯出圖片 -->
+    <!-- 引入 html2canvas -->
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <!-- 引入 canvas-confetti 用於歡樂灑花特效 -->
+    <!-- 引入 canvas-confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
@@ -27,7 +32,9 @@
                             pinkLight: '#FFE5EB',
                             gray: '#8E8E93',
                             grayBg: '#E5E5EA',
-                            inputBg: 'rgba(118, 118, 128, 0.1)'
+                            inputBg: 'rgba(118, 118, 128, 0.1)',
+                            darkBg: '#1C1C1E',
+                            darkCard: '#2C2C2E'
                         }
                     },
                     animation: {
@@ -48,20 +55,17 @@
         body {
             font-family: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, "Microsoft JhengHei", sans-serif;
             -webkit-font-smoothing: antialiased;
-            background-color: #F2F2F7;
-            color: #1C1C1E;
         }
 
         .sortable-ghost {
             opacity: 0.3;
-            background-color: #E5E5EA;
             transform: scale(0.9);
             border-radius: 9999px;
         }
         
         .student-pill {
             cursor: grab;
-            transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1);
+            transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), background-color 0.2s, color 0.2s;
         }
         
         .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -87,6 +91,11 @@
             filter: blur(100px);
             z-index: -1;
             pointer-events: none;
+            transition: opacity 0.5s;
+        }
+
+        .dark .bg-orb {
+            opacity: 0.3;
         }
 
         input::-webkit-outer-spin-button,
@@ -94,86 +103,109 @@
             -webkit-appearance: none;
             margin: 0;
         }
+        
+        /* contenteditable placeholder */
+        [contenteditable]:empty:before {
+            content: attr(data-placeholder);
+            color: #8E8E93;
+            pointer-events: none;
+            display: block; 
+        }
     </style>
 </head>
-<body class="min-h-screen relative px-4 md:px-8 pt-16 pb-16">
+<body class="min-h-screen relative px-4 md:px-8 pt-16 pb-16 bg-[#F2F2F7] text-[#1C1C1E] dark:bg-ios-darkBg dark:text-white transition-colors duration-300">
 
     <!-- 浮水印 -->
-    <div style="position: absolute; top: 16px; right: 20px; font-size: 18pt; color: gray; opacity: 0.25; z-index: 0; pointer-events: none; user-select: none; font-weight: bold; white-space: nowrap;">網站建立自楊家驊老師</div>
-    <div style="position: absolute; bottom: 16px; right: 20px; font-size: 18pt; color: gray; opacity: 0.25; z-index: 0; pointer-events: none; user-select: none; font-weight: bold; white-space: nowrap;">網站建立自楊家驊老師</div>
+    <div class="absolute top-4 right-5 text-lg font-bold text-gray-500 opacity-25 z-0 pointer-events-none select-none whitespace-nowrap dark:opacity-10">網站建立自楊家驊老師</div>
+    <div class="absolute bottom-4 right-5 text-lg font-bold text-gray-500 opacity-25 z-0 pointer-events-none select-none whitespace-nowrap dark:opacity-10">網站建立自楊家驊老師</div>
 
     <!-- iOS 26 空間感背景光暈 -->
-    <div class="bg-orb bg-[#FFD1E3]/50 w-[50vw] h-[50vw] top-[-10%] left-[-10%]"></div>
-    <div class="bg-orb bg-[#D1E8FF]/50 w-[60vw] h-[60vw] bottom-[-20%] right-[-10%]"></div>
-    <div class="bg-orb bg-[#D1FFDF]/40 w-[40vw] h-[40vw] top-[20%] right-[10%]"></div>
+    <div class="bg-orb bg-[#FFD1E3]/50 dark:bg-[#FF2D55]/30 w-[50vw] h-[50vw] top-[-10%] left-[-10%]"></div>
+    <div class="bg-orb bg-[#D1E8FF]/50 dark:bg-[#007AFF]/30 w-[60vw] h-[60vw] bottom-[-20%] right-[-10%]"></div>
+    <div class="bg-orb bg-[#D1FFDF]/40 dark:bg-[#34C759]/20 w-[40vw] h-[40vw] top-[20%] right-[10%]"></div>
 
     <div id="main-container" class="max-w-6xl mx-auto space-y-6 relative z-10">
         
         <!-- 標題區 -->
-        <header class="bg-white/60 backdrop-blur-3xl p-8 rounded-[32px] shadow-sm border border-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-center md:text-left">
+        <header class="bg-white/60 dark:bg-ios-darkCard/60 backdrop-blur-3xl p-8 rounded-[32px] shadow-sm border border-white dark:border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-center md:text-left transition-colors duration-300">
             <div>
-                <h1 class="text-3xl font-extrabold tracking-tight mb-2 text-[#1C1C1E]">🧑🏫 學生分組工具</h1>
+                <h1 class="text-3xl font-extrabold tracking-tight mb-2 text-[#1C1C1E] dark:text-white">🧑‍🏫 學生分組工具</h1>
                 <p class="text-ios-gray text-base font-medium">手動優先，智能分配。支援 TXT 與海報圖檔匯出。</p>
             </div>
+            <button id="btn-theme-toggle" class="p-3 bg-white dark:bg-black/20 rounded-full shadow-sm border border-black/5 dark:border-white/10 active:scale-95 transition-transform text-xl">
+                🌙
+            </button>
         </header>
 
         <!-- 第一區：基礎設定 -->
-        <section class="bg-white/60 backdrop-blur-3xl p-6 md:p-8 rounded-[32px] shadow-sm border border-white">
+        <section class="bg-white/60 dark:bg-ios-darkCard/60 backdrop-blur-3xl p-6 md:p-8 rounded-[32px] shadow-sm border border-white dark:border-white/10 transition-colors duration-300">
             <h2 class="text-xl font-bold mb-6 tracking-tight flex items-center gap-2">⚙️ 基礎設定</h2>
+            
+            <div class="mb-6">
+                <label class="block text-sm font-bold text-ios-gray mb-1.5 ml-1">名單匯入 (選填)</label>
+                <textarea id="names-input" placeholder="貼上名單，例如：&#10;1 楊小華&#10;2 陳小明" class="w-full h-24 bg-white/40 dark:bg-black/20 border border-white dark:border-white/10 rounded-[20px] p-4 font-bold outline-none focus:ring-2 focus:ring-ios-blue transition-all resize-none shadow-sm dark:text-white placeholder-gray-400 dark:placeholder-gray-600"></textarea>
+                <p class="text-xs text-ios-gray mt-1 ml-1">若輸入名單，下方「總人數」將以名單為準。格式需包含數字(座號)。</p>
+            </div>
+
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
-                    <label class="block text-sm font-bold text-ios-gray mb-1.5 ml-1">總人數</label>
-                    <div class="flex items-center bg-white/40 border border-white rounded-[20px] p-1 shadow-sm">
-                        <button id="btn-dec-total" class="w-10 h-10 rounded-2xl bg-white shadow-sm text-ios-blue font-bold text-xl active:scale-90 transition-transform">-</button>
-                        <input type="number" id="total-students" value="28" min="1" class="flex-1 bg-transparent border-none text-center font-bold text-lg outline-none">
-                        <button id="btn-inc-total" class="w-10 h-10 rounded-2xl bg-white shadow-sm text-ios-blue font-bold text-xl active:scale-90 transition-transform">+</button>
+                    <label class="block text-sm font-bold text-ios-gray mb-1.5 ml-1">總人數 (未貼名單時)</label>
+                    <div class="flex items-center bg-white/40 dark:bg-black/20 border border-white dark:border-white/10 rounded-[20px] p-1 shadow-sm">
+                        <button id="btn-dec-total" class="w-10 h-10 rounded-2xl bg-white dark:bg-white/10 shadow-sm text-ios-blue dark:text-white font-bold text-xl active:scale-90 transition-transform">-</button>
+                        <input type="number" id="total-students" value="28" min="1" class="flex-1 bg-transparent border-none text-center font-bold text-lg outline-none dark:text-white">
+                        <button id="btn-inc-total" class="w-10 h-10 rounded-2xl bg-white dark:bg-white/10 shadow-sm text-ios-blue dark:text-white font-bold text-xl active:scale-90 transition-transform">+</button>
                     </div>
                 </div>
                 <div>
                     <label class="block text-sm font-bold text-ios-gray mb-1.5 ml-1">剔除空號</label>
-                    <input type="text" id="excluded-students" placeholder="4, 14..." class="w-full h-[52px] bg-white/40 border border-white rounded-[20px] px-4 font-bold text-lg outline-none focus:ring-2 focus:ring-ios-blue transition-all">
+                    <input type="text" id="excluded-students" placeholder="4, 14..." class="w-full h-[52px] bg-white/40 dark:bg-black/20 border border-white dark:border-white/10 rounded-[20px] px-4 font-bold text-lg outline-none focus:ring-2 focus:ring-ios-blue transition-all dark:text-white">
                 </div>
                 <div>
                     <label class="block text-sm font-bold text-ios-gray mb-1.5 ml-1">分成幾組</label>
-                    <div class="flex items-center bg-white/40 border border-white rounded-[20px] p-1 shadow-sm">
-                        <button id="btn-dec-groups" class="w-10 h-10 rounded-2xl bg-white shadow-sm text-ios-blue font-bold text-xl active:scale-90 transition-transform">-</button>
-                        <input type="number" id="num-groups" value="4" min="1" class="flex-1 bg-transparent border-none text-center font-bold text-lg outline-none">
-                        <button id="btn-inc-groups" class="w-10 h-10 rounded-2xl bg-white shadow-sm text-ios-blue font-bold text-xl active:scale-90 transition-transform">+</button>
+                    <div class="flex items-center bg-white/40 dark:bg-black/20 border border-white dark:border-white/10 rounded-[20px] p-1 shadow-sm">
+                        <button id="btn-dec-groups" class="w-10 h-10 rounded-2xl bg-white dark:bg-white/10 shadow-sm text-ios-blue dark:text-white font-bold text-xl active:scale-90 transition-transform">-</button>
+                        <input type="number" id="num-groups" value="4" min="1" class="flex-1 bg-transparent border-none text-center font-bold text-lg outline-none dark:text-white">
+                        <button id="btn-inc-groups" class="w-10 h-10 rounded-2xl bg-white dark:bg-white/10 shadow-sm text-ios-blue dark:text-white font-bold text-xl active:scale-90 transition-transform">+</button>
                     </div>
                 </div>
                 <div>
                     <label class="block text-sm font-bold text-ios-gray mb-1.5 ml-1">分組模式</label>
-                    <select id="group-mode" class="w-full h-[52px] bg-white/40 border border-white rounded-[20px] px-4 font-bold text-lg outline-none cursor-pointer appearance-none shadow-sm">
-                        <option value="A">模式 A：全部分組</option>
-                        <option value="B">模式 B：男女分組</option>
+                    <select id="group-mode" class="w-full h-[52px] bg-white/40 dark:bg-black/20 border border-white dark:border-white/10 rounded-[20px] px-4 font-bold text-lg outline-none cursor-pointer appearance-none shadow-sm dark:text-white">
+                        <option value="A" class="dark:bg-ios-darkCard">模式 A：全部分組</option>
+                        <option value="B" class="dark:bg-ios-darkCard">模式 B：男女分組</option>
                     </select>
                 </div>
             </div>
-            <button id="btn-apply-setup" class="mt-6 bg-ios-blue text-white font-bold py-4 px-8 rounded-2xl shadow-lg shadow-ios-blue/20 active:scale-95 transition-all w-full md:w-auto">套用設定並重置</button>
+            
+            <div class="mt-6 flex flex-wrap gap-3">
+                <button id="btn-apply-setup" class="bg-ios-blue text-white font-bold py-4 px-8 rounded-2xl shadow-lg shadow-ios-blue/20 active:scale-95 transition-all w-full md:w-auto">套用設定並重置</button>
+                <button id="btn-clear-save" class="bg-white dark:bg-black/20 text-ios-pink dark:text-[#FF453A] border border-black/5 dark:border-white/10 font-bold py-4 px-6 rounded-2xl shadow-sm active:scale-95 transition-all w-full md:w-auto">清除存檔</button>
+            </div>
 
-            <div id="gender-setup-area" class="hidden mt-6 bg-white/30 p-5 rounded-[24px] border border-white/50">
+            <div id="gender-setup-area" class="hidden mt-6 bg-white/30 dark:bg-white/5 p-5 rounded-[24px] border border-white/50 dark:border-white/10">
+                <p class="text-sm font-bold mb-3 text-ios-gray">點擊座號切換性別 (男 / 女)</p>
                 <div id="gender-grid" class="flex flex-wrap gap-2.5"></div>
             </div>
         </section>
 
         <!-- 第二區：分組工作台 -->
-        <section class="bg-white/60 backdrop-blur-3xl p-6 md:p-8 rounded-[32px] shadow-sm border border-white">
-            <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center pb-6 mb-6 gap-4 border-b border-black/5">
+        <section class="bg-white/60 dark:bg-ios-darkCard/60 backdrop-blur-3xl p-6 md:p-8 rounded-[32px] shadow-sm border border-white dark:border-white/10 transition-colors duration-300">
+            <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center pb-6 mb-6 gap-4 border-b border-black/5 dark:border-white/10">
                 <h2 class="text-xl font-bold tracking-tight shrink-0 flex items-center gap-2">🔄 分組工作台</h2>
                 <div class="flex flex-wrap items-center gap-3 w-full xl:w-auto">
-                    <button id="btn-undo" class="bg-white text-ios-blue shadow-sm border border-black/5 font-bold py-3 px-5 rounded-[20px] active:scale-95 disabled:opacity-30">復原</button>
-                    <button id="btn-reset-groups" class="bg-white text-ios-pink shadow-sm border border-black/5 font-bold py-3 px-5 rounded-[20px] active:scale-95">全部退回</button>
-                    <div class="flex-1 xl:flex-none flex items-center gap-2 p-1.5 bg-white/50 rounded-[24px] border border-white shadow-inner w-full sm:w-auto">
-                        <select id="auto-algo-select" class="flex-1 bg-transparent font-bold text-sm px-4 outline-none appearance-none cursor-pointer"></select>
-                        <button id="btn-execute-auto" class="bg-ios-blue text-white font-bold py-2.5 px-6 rounded-[18px] shadow-md shadow-ios-blue/20 active:scale-95 transition-transform">✨ 自動分配 / 重洗</button>
+                    <button id="btn-undo" class="bg-white dark:bg-black/20 text-ios-blue dark:text-[#0A84FF] shadow-sm border border-black/5 dark:border-white/10 font-bold py-3 px-5 rounded-[20px] active:scale-95 disabled:opacity-30">復原</button>
+                    <button id="btn-reset-groups" class="bg-white dark:bg-black/20 text-ios-pink dark:text-[#FF453A] shadow-sm border border-black/5 dark:border-white/10 font-bold py-3 px-5 rounded-[20px] active:scale-95">全部退回</button>
+                    <div class="flex-1 xl:flex-none flex items-center gap-2 p-1.5 bg-white/50 dark:bg-black/40 rounded-[24px] border border-white dark:border-white/10 shadow-inner w-full sm:w-auto">
+                        <select id="auto-algo-select" class="flex-1 bg-transparent font-bold text-sm px-4 outline-none appearance-none cursor-pointer dark:text-white"></select>
+                        <button id="btn-execute-auto" class="bg-ios-blue text-white font-bold py-2.5 px-6 rounded-[18px] shadow-md shadow-ios-blue/20 active:scale-95 transition-transform whitespace-nowrap">✨ 自動分配 / 重洗</button>
                     </div>
                 </div>
             </div>
-            <div id="validation-warning" class="hidden mb-6 p-4 bg-[#FF3B30]/10 text-ios-red rounded-[20px] border border-[#FF3B30]/20 font-bold flex flex-col gap-1"></div>
+            <div id="validation-warning" class="hidden mb-6 p-4 bg-[#FF3B30]/10 text-ios-red dark:text-[#FF453A] rounded-[20px] border border-[#FF3B30]/20 font-bold flex flex-col gap-1"></div>
             <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                <div class="lg:col-span-1 bg-white/30 border border-white/50 rounded-[28px] p-5 flex flex-col max-h-[600px] shadow-sm">
-                    <h3 class="font-bold text-[#1C1C1E] mb-4 flex justify-between items-center text-[17px]">
-                        待分配 <span id="unassigned-count" class="bg-black/5 px-2.5 py-0.5 rounded-full text-xs">0</span>
+                <div class="lg:col-span-1 bg-white/30 dark:bg-white/5 border border-white/50 dark:border-white/10 rounded-[28px] p-5 flex flex-col max-h-[600px] shadow-sm">
+                    <h3 class="font-bold text-[#1C1C1E] dark:text-white mb-4 flex justify-between items-center text-[17px]">
+                        待分配 <span id="unassigned-count" class="bg-black/5 dark:bg-white/10 px-2.5 py-0.5 rounded-full text-xs">0</span>
                     </h3>
                     <div id="unassigned-list" class="flex-1 overflow-y-auto no-scrollbar flex flex-wrap gap-2.5 content-start min-h-[120px]"></div>
                 </div>
@@ -182,15 +214,15 @@
         </section>
 
         <!-- 第三區：分組結果 -->
-        <section class="bg-white/60 backdrop-blur-3xl p-6 md:p-8 rounded-[32px] shadow-sm border border-white">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b border-black/5 pb-6 gap-4">
+        <section class="bg-white/60 dark:bg-ios-darkCard/60 backdrop-blur-3xl p-6 md:p-8 rounded-[32px] shadow-sm border border-white dark:border-white/10 transition-colors duration-300">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b border-black/5 dark:border-white/10 pb-6 gap-4">
                 <h2 class="text-xl font-bold tracking-tight">📄 分組結果</h2>
                 <div class="flex gap-2 w-full sm:w-auto">
                     <button id="btn-quick-img" class="flex-1 sm:flex-none bg-ios-blue text-white font-bold py-3 px-6 rounded-2xl active:scale-95 shadow-lg shadow-ios-blue/20">📸 匯出海報圖檔</button>
-                    <button id="btn-export-txt" class="flex-1 sm:flex-none bg-white text-[#1C1C1E] font-bold py-3 px-6 rounded-2xl active:scale-95 border border-black/5 shadow-sm">匯出 TXT</button>
+                    <button id="btn-export-txt" class="flex-1 sm:flex-none bg-white dark:bg-black/20 text-[#1C1C1E] dark:text-white font-bold py-3 px-6 rounded-2xl active:scale-95 border border-black/5 dark:border-white/10 shadow-sm">匯出 TXT</button>
                 </div>
             </div>
-            <div id="text-output" class="bg-white/40 border border-white p-6 rounded-[24px] font-mono text-[16px] whitespace-pre-wrap shadow-inner min-h-[100px]"></div>
+            <div id="text-output" class="bg-white/40 dark:bg-black/40 border border-white dark:border-white/10 p-6 rounded-[24px] font-mono text-[16px] whitespace-pre-wrap shadow-inner min-h-[100px] dark:text-gray-300"></div>
         </section>
     </div>
 
@@ -218,25 +250,30 @@
         /**
          * 狀態與元件初始化
          */
-        const state = {
+        const STORAGE_KEY = 'group-tool-state';
+        
+        let state = {
             total: 28, excluded: [], numGroups: 4, mode: 'A',
-            students: {}, unassigned: [], groups: [],
-            lastValidationRule: 'normal', sortableInstances: [], history: []
+            students: {}, unassigned: [], groups: [], groupNames: [],
+            lastValidationRule: 'normal', sortableInstances: [], history: [],
+            namesMap: {}, rawNamesInput: '', isDark: false
         };
 
         const themes = [
-            { bg: 'rgba(255, 249, 230, 0.85)', border: 'rgba(255, 228, 138, 0.6)', text: '#B27B00' },
-            { bg: 'rgba(230, 248, 236, 0.85)', border: 'rgba(138, 230, 168, 0.6)', text: '#008A2E' },
-            { bg: 'rgba(230, 242, 255, 0.85)', border: 'rgba(138, 180, 248, 0.6)', text: '#0055D4' },
-            { bg: 'rgba(252, 232, 243, 0.85)', border: 'rgba(248, 138, 181, 0.6)', text: '#C20055' }
+            { bg: 'rgba(255, 249, 230, 0.85)', border: 'rgba(255, 228, 138, 0.6)', text: '#B27B00', darkBg: 'rgba(178, 123, 0, 0.1)', darkBorder: 'rgba(255, 228, 138, 0.3)', darkText: '#FFD659' },
+            { bg: 'rgba(230, 248, 236, 0.85)', border: 'rgba(138, 230, 168, 0.6)', text: '#008A2E', darkBg: 'rgba(0, 138, 46, 0.1)', darkBorder: 'rgba(138, 230, 168, 0.3)', darkText: '#8AE6A8' },
+            { bg: 'rgba(230, 242, 255, 0.85)', border: 'rgba(138, 180, 248, 0.6)', text: '#0055D4', darkBg: 'rgba(0, 85, 212, 0.1)', darkBorder: 'rgba(138, 180, 248, 0.3)', darkText: '#8AB4F8' },
+            { bg: 'rgba(252, 232, 243, 0.85)', border: 'rgba(248, 138, 181, 0.6)', text: '#C20055', darkBg: 'rgba(194, 0, 85, 0.1)', darkBorder: 'rgba(248, 138, 181, 0.3)', darkText: '#F88AB5' }
         ];
 
         const elements = {
+            namesInput: document.getElementById('names-input'),
             totalInput: document.getElementById('total-students'),
             excludedInput: document.getElementById('excluded-students'),
             numGroupsInput: document.getElementById('num-groups'),
             modeSelect: document.getElementById('group-mode'),
             applyBtn: document.getElementById('btn-apply-setup'),
+            clearSaveBtn: document.getElementById('btn-clear-save'),
             genderGrid: document.getElementById('gender-grid'),
             autoAlgoSelect: document.getElementById('auto-algo-select'),
             executeAutoBtn: document.getElementById('btn-execute-auto'),
@@ -245,14 +282,15 @@
             unassignedCount: document.getElementById('unassigned-count'),
             groupsContainer: document.getElementById('groups-container'),
             textOutput: document.getElementById('text-output'),
-            exportTxtBtn: document.getElementById('btn-export-txt'), // 已更名
+            exportTxtBtn: document.getElementById('btn-export-txt'),
             resetGroupsBtn: document.getElementById('btn-reset-groups'),
             undoBtn: document.getElementById('btn-undo'),
             quickImgBtn: document.getElementById('btn-quick-img'),
             posterGrid: document.getElementById('poster-grid'),
             posterSubtitle: document.getElementById('poster-subtitle'),
             posterTime: document.getElementById('poster-time'),
-            posterShell: document.getElementById('poster-shell')
+            posterShell: document.getElementById('poster-shell'),
+            themeToggle: document.getElementById('btn-theme-toggle')
         };
 
         function shuffleArray(array) {
@@ -267,7 +305,54 @@
             confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#007AFF', '#FF2D55', '#34C759', '#FF9500'] });
         }
 
-        function saveState() {
+        function persistState() {
+            try {
+                const saveObj = {
+                    total: state.total, excluded: state.excluded, numGroups: state.numGroups, mode: state.mode,
+                    students: state.students, unassigned: state.unassigned, groups: state.groups,
+                    groupNames: state.groupNames, namesMap: state.namesMap, rawNamesInput: elements.namesInput.value,
+                    isDark: state.isDark
+                };
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(saveObj));
+            } catch (e) { console.error("Save failed", e); }
+        }
+
+        function loadState() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    const d = JSON.parse(saved);
+                    state.total = d.total || 28;
+                    state.excluded = d.excluded || [];
+                    state.numGroups = d.numGroups || 4;
+                    state.mode = d.mode || 'A';
+                    state.students = d.students || {};
+                    state.unassigned = d.unassigned || [];
+                    state.groups = d.groups || [];
+                    state.groupNames = d.groupNames || [];
+                    state.namesMap = d.namesMap || {};
+                    state.rawNamesInput = d.rawNamesInput || '';
+                    state.isDark = !!d.isDark;
+                    
+                    elements.namesInput.value = state.rawNamesInput;
+                    elements.totalInput.value = state.total;
+                    elements.excludedInput.value = state.excluded.join(', ');
+                    elements.numGroupsInput.value = state.numGroups;
+                    elements.modeSelect.value = state.mode;
+                    
+                    if (state.isDark) {
+                        document.documentElement.classList.add('dark');
+                        elements.themeToggle.textContent = '☀️';
+                        document.getElementById('theme-color-meta').content = '#1C1C1E';
+                    }
+                    
+                    return true;
+                }
+            } catch(e) { console.error("Load failed", e); }
+            return false;
+        }
+
+        function saveStateToHistory() {
             state.history.push({
                 unassigned: [...state.unassigned],
                 groups: state.groups.map(g => [...g]),
@@ -276,6 +361,7 @@
             });
             if (state.history.length > 20) state.history.shift();
             elements.undoBtn.disabled = false;
+            persistState();
         }
 
         function undo() {
@@ -287,15 +373,46 @@
             state.lastValidationRule = prev.lastValidationRule;
             elements.undoBtn.disabled = state.history.length === 0;
             renderWorkspace();
+            persistState();
+        }
+
+        function parseNames() {
+            state.namesMap = {};
+            const text = elements.namesInput.value.trim();
+            if (!text) return 0;
+            
+            let maxId = 0;
+            const lines = text.split('\n');
+            lines.forEach(line => {
+                const match = line.match(/^(\d+)\s*[:.\-\s]\s*(.+)$/);
+                if (match) {
+                    const id = parseInt(match[1]);
+                    const name = match[2].trim();
+                    state.namesMap[id] = name;
+                    if (id > maxId) maxId = id;
+                }
+            });
+            return maxId;
         }
 
         function initSetup() {
-            state.total = parseInt(elements.totalInput.value) || 28;
+            const parsedMaxId = parseNames();
+            
+            if (parsedMaxId > 0) {
+                state.total = parsedMaxId;
+                elements.totalInput.value = state.total;
+            } else {
+                state.total = parseInt(elements.totalInput.value) || 28;
+            }
+            
             state.numGroups = parseInt(elements.numGroupsInput.value) || 4;
             state.mode = elements.modeSelect.value;
-            state.excluded = elements.excludedInput.value.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+            const exStr = elements.excludedInput.value;
+            state.excluded = exStr ? exStr.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n)) : [];
+            
             state.students = {}; state.unassigned = [];
             state.groups = Array.from({ length: state.numGroups }, () => []);
+            state.groupNames = Array.from({ length: state.numGroups }, (_, i) => `第 ${i+1} 組`);
             state.history = []; elements.undoBtn.disabled = true;
 
             const valid = [];
@@ -305,17 +422,20 @@
                 state.students[id] = { id, gender: idx < mid ? 'M' : 'F', isAuto: false };
                 state.unassigned.push(id);
             });
+            
             updateAlgoOptions(); renderGenderSetup(); renderWorkspace();
+            persistState();
         }
 
         function renderGenderSetup() {
             elements.genderGrid.innerHTML = '';
             Object.keys(state.students).map(Number).sort((a,b)=>a-b).forEach(id => {
                 const s = state.students[id];
+                const name = state.namesMap[id] ? state.namesMap[id] : id;
                 const btn = document.createElement('button');
-                btn.className = `w-11 h-11 rounded-full font-bold text-sm shadow-sm transition-all active:scale-90 ${s.gender==='M'?'bg-ios-blueLight text-ios-blue':'bg-ios-pinkLight text-ios-pink'}`;
-                btn.textContent = id;
-                btn.onclick = () => { s.gender = s.gender==='M'?'F':'M'; renderGenderSetup(); renderWorkspace(); };
+                btn.className = `px-4 py-2 rounded-full font-bold text-sm shadow-sm transition-all active:scale-90 border border-transparent ${s.gender==='M'?'bg-ios-blueLight text-ios-blue dark:bg-ios-blue/20 dark:border-ios-blue/30':'bg-ios-pinkLight text-ios-pink dark:bg-ios-pink/20 dark:border-ios-pink/30'}`;
+                btn.textContent = name;
+                btn.onclick = () => { s.gender = s.gender==='M'?'F':'M'; renderGenderSetup(); renderWorkspace(); persistState(); };
                 elements.genderGrid.appendChild(btn);
             });
             document.getElementById('gender-setup-area').classList.toggle('hidden', state.mode==='A');
@@ -323,10 +443,16 @@
 
         function getStudentHtml(id) {
             const s = state.students[id];
-            const base = "student-pill inline-flex items-center justify-center w-[46px] h-[46px] rounded-full text-[17px] font-bold select-none relative bg-white shadow-sm border border-black/5 animate-pop-in";
-            let color = "text-[#1C1C1E]";
-            if (state.mode === 'B') color = s.gender === 'M' ? "bg-ios-blueLight text-ios-blue" : "bg-ios-pinkLight text-ios-pink";
-            return `<div class="${base} ${color}" data-id="${id}">${id}</div>`;
+            const name = state.namesMap[id] ? state.namesMap[id] : id;
+            
+            let wClass = state.namesMap[id] ? "px-4" : "w-[46px] justify-center";
+            
+            const base = `student-pill inline-flex items-center h-[46px] ${wClass} rounded-full text-[16px] font-bold select-none relative bg-white dark:bg-ios-darkCard shadow-sm border border-black/5 dark:border-white/10 animate-pop-in`;
+            let color = "text-[#1C1C1E] dark:text-white";
+            if (state.mode === 'B') {
+                color = s.gender === 'M' ? "bg-ios-blueLight text-ios-blue dark:bg-ios-blue/20 dark:text-ios-blueLight" : "bg-ios-pinkLight text-ios-pink dark:bg-ios-pink/20 dark:text-ios-pinkLight";
+            }
+            return `<div class="${base} ${color}" data-id="${id}">${name}</div>`;
         }
 
         function renderWorkspace() {
@@ -336,27 +462,60 @@
             state.unassigned.forEach(id => elements.unassignedList.insertAdjacentHTML('beforeend', getStudentHtml(id)));
 
             elements.groupsContainer.innerHTML = '';
+            
+            while(state.groupNames.length < state.groups.length) state.groupNames.push(`第 ${state.groupNames.length+1} 組`);
+
             state.groups.forEach((group, idx) => {
+                const isDark = document.documentElement.classList.contains('dark');
                 const theme = themes[idx % 4];
                 const card = document.createElement('div');
-                card.className = `border rounded-[28px] flex flex-col bg-white overflow-hidden shadow-sm transition-all hover:shadow-md`;
-                card.style.borderColor = theme.border;
+                card.className = `border rounded-[28px] flex flex-col bg-white dark:bg-ios-darkCard overflow-hidden shadow-sm transition-all hover:shadow-md`;
+                card.style.borderColor = isDark ? theme.darkBorder : theme.border;
+                
+                let mCount = 0, fCount = 0;
+                group.forEach(id => { if(state.students[id].gender==='M') mCount++; else fCount++; });
+                const genderStats = state.mode === 'B' ? `<div class="flex gap-1 text-xs px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/10 text-gray-500 dark:text-gray-300">👦${mCount} 👧${fCount}</div>` : '';
+
                 card.innerHTML = `
-                    <div class="bg-white flex justify-between items-center px-4 py-3 border-b" style="border-color:${theme.border}">
-                        <h4 class="font-extrabold text-sm" style="color:${theme.text}">第 ${idx+1} 組 (${group.length})</h4>
-                        <div class="flex gap-1.5"><input type="number" id="input-${idx}" class="w-14 text-center text-xs bg-black/5 rounded-xl py-1 outline-none focus:ring-1 focus:ring-ios-blue"><button class="bg-black/5 font-extrabold px-2 py-1 rounded-xl text-xs transition-colors hover:bg-black/10" onclick="manualAdd(${idx})">加</button></div>
+                    <div class="bg-white dark:bg-ios-darkCard flex justify-between items-center px-4 py-3 border-b" style="border-color:${isDark ? theme.darkBorder : theme.border}">
+                        <div class="flex items-center gap-2">
+                            <span contenteditable="true" data-idx="${idx}" class="group-name-edit font-extrabold text-sm outline-none border-b border-transparent focus:border-current" style="color:${isDark ? theme.darkText : theme.text}">${state.groupNames[idx]}</span>
+                            <span class="text-xs font-bold text-gray-400">(${group.length})</span>
+                            ${genderStats}
+                        </div>
+                        <div class="flex gap-1.5 opacity-30 hover:opacity-100 transition-opacity">
+                            <input type="number" id="input-${idx}" class="w-12 text-center text-xs bg-black/5 dark:bg-white/10 dark:text-white rounded-xl py-1 outline-none focus:ring-1 focus:ring-ios-blue">
+                            <button class="bg-black/5 dark:bg-white/10 dark:text-white font-extrabold px-2 py-1 rounded-xl text-xs transition-colors hover:bg-black/10 dark:hover:bg-white/20" onclick="manualAdd(${idx})">加</button>
+                        </div>
                     </div>
-                    <div id="list-${idx}" class="flex-1 min-h-[80px] p-4 flex flex-wrap gap-2.5 empty-group-state" style="background:${theme.bg}"></div>`;
+                    <div id="list-${idx}" class="flex-1 min-h-[80px] p-4 flex flex-wrap gap-2.5 empty-group-state" style="background:${isDark ? theme.darkBg : theme.bg}"></div>`;
                 elements.groupsContainer.appendChild(card);
                 const list = document.getElementById(`list-${idx}`);
                 group.forEach(id => list.insertAdjacentHTML('beforeend', getStudentHtml(id)));
+            });
+
+            // Bind group name edits
+            document.querySelectorAll('.group-name-edit').forEach(el => {
+                el.addEventListener('blur', (e) => {
+                    const idx = parseInt(e.target.dataset.idx);
+                    state.groupNames[idx] = e.target.textContent.trim() || `第 ${idx+1} 組`;
+                    e.target.textContent = state.groupNames[idx];
+                    persistState();
+                    updateTextOutput();
+                });
+                el.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        e.target.blur();
+                    }
+                });
             });
 
             initSortable(); validateGroups(); updateTextOutput();
         }
 
         function initSortable() {
-            const opts = { group: 's', animation: 250, easing: "cubic-bezier(0.2, 0, 0, 1)", ghostClass: 'sortable-ghost', onStart: saveState, onEnd: handleDragEnd };
+            const opts = { group: 's', animation: 250, easing: "cubic-bezier(0.2, 0, 0, 1)", ghostClass: 'sortable-ghost', onStart: saveStateToHistory, onEnd: handleDragEnd };
             state.sortableInstances.push(new Sortable(elements.unassignedList, { ...opts, id: 'unassigned-list' }));
             state.groups.forEach((_, i) => state.sortableInstances.push(new Sortable(document.getElementById(`list-${i}`), { ...opts, id: `list-${i}` })));
         }
@@ -368,17 +527,17 @@
             else state.groups[parseInt(evt.from.id.replace('list-',''))] = state.groups[parseInt(evt.from.id.replace('list-',''))].filter(x => x !== id);
             if (evt.to.id === 'unassigned-list') state.unassigned.push(id);
             else state.groups[parseInt(evt.to.id.replace('list-',''))].push(id);
-            state.students[id].isAuto = false; renderWorkspace();
+            state.students[id].isAuto = false; renderWorkspace(); persistState();
         }
 
         function updateAlgoOptions() {
             elements.autoAlgoSelect.innerHTML = state.mode === 'A' 
-                ? `<option value="random">🎲 全隨機平均分配</option>` 
-                : `<option value="even">⚖️ 性別平均分配 (S型)</option><option value="single">👦👧 單一性別分配</option><option value="random">🎲 無視性別分配</option>`;
+                ? `<option value="random" class="dark:bg-ios-darkCard">🎲 全隨機平均分配</option>` 
+                : `<option value="even" class="dark:bg-ios-darkCard">⚖️ 性別平均分配 (S型)</option><option value="single" class="dark:bg-ios-darkCard">👦👧 單一性別分配</option><option value="random" class="dark:bg-ios-darkCard">🎲 無視性別分配</option>`;
         }
 
         function executeAuto() {
-            saveState();
+            saveStateToHistory();
             state.groups.forEach((g, i) => {
                 const manual = [];
                 g.forEach(id => { if(state.students[id].isAuto) state.unassigned.push(id); else manual.push(id); });
@@ -431,7 +590,7 @@
             }
             state.unassigned = state.unassigned.filter(id => !state.groups.flat().includes(id));
             const err = validateGroups(); if(!err && state.unassigned.length === 0) fireCelebration(); 
-            renderWorkspace();
+            renderWorkspace(); persistState();
         }
 
         function validateGroups() {
@@ -457,8 +616,15 @@
             return false;
         }
 
+        function getStudentDisplayName(id) {
+            return state.namesMap[id] ? state.namesMap[id] : id;
+        }
+
         function updateTextOutput() {
-            elements.textOutput.textContent = state.groups.map((g,i) => `第 ${i+1} 組：${[...g].sort((a,b)=>a-b).join('、')}`).join('\n');
+            elements.textOutput.textContent = state.groups.map((g,i) => {
+                const name = state.groupNames[i] || `第 ${i+1} 組`;
+                return `${name}：${[...g].sort((a,b)=>a-b).map(id => getStudentDisplayName(id)).join('、')}`;
+            }).join('\n');
         }
 
         function exportToPoster() {
@@ -496,11 +662,11 @@
                 item.style.cssText = `background: ${theme.bg}; border-radius: 30px; padding: ${paddingSize}; border: 2px solid ${theme.border}; box-shadow: 0 10px 25px rgba(0,0,0,0.03); display: flex; flex-direction: column; gap: 10px;`;
                 item.innerHTML = `
                     <div style="color:${theme.text}; font-size:${titleSize}; font-weight:900; display:flex; justify-content:space-between; align-items:center;">
-                        Group ${i+1} 
+                        ${state.groupNames[i] || `Group ${i+1}`}
                         <span style="font-size:0.7em; background:rgba(255,255,255,0.6); padding:4px 10px; border-radius:12px;">${g.length}人</span>
                     </div>
                     <div style="font-size:${contentSize}; font-weight:700; color:#1C1C1E; letter-spacing:1px; line-height:1.5; word-break: break-all;">
-                        ${sorted.join('、') || '---'}
+                        ${sorted.map(id => getStudentDisplayName(id)).join('、') || '---'}
                     </div>`;
                 elements.posterGrid.appendChild(item);
             });
@@ -520,12 +686,9 @@
             }, 200);
         }
 
-        // TXT 匯出邏輯
         elements.exportTxtBtn.onclick = () => {
             const content = elements.textOutput.textContent;
             if (!content.trim()) return alert("目前尚無分組結果可匯出。");
-            
-            // 使用帶有 BOM 的 UTF-8 確保記事本不亂碼
             const blob = new Blob(['\ufeff', content], { type: 'text/plain;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -540,11 +703,30 @@
         elements.executeAutoBtn.onclick = executeAuto;
         elements.undoBtn.onclick = undo;
         elements.resetGroupsBtn.onclick = () => { 
-            saveState(); 
+            saveStateToHistory(); 
             state.groups.forEach(g => state.unassigned.push(...g)); 
             state.groups = Array.from({length:state.numGroups},()=>[]); 
             state.unassigned.sort((a,b)=>a-b); 
-            renderWorkspace(); 
+            renderWorkspace(); persistState();
+        };
+        elements.clearSaveBtn.onclick = () => {
+            if(confirm('確定要清除所有存檔設定嗎？這將重置為預設狀態。')) {
+                localStorage.removeItem(STORAGE_KEY);
+                location.reload();
+            }
+        };
+        elements.themeToggle.onclick = () => {
+            state.isDark = !state.isDark;
+            if (state.isDark) {
+                document.documentElement.classList.add('dark');
+                elements.themeToggle.textContent = '☀️';
+                document.getElementById('theme-color-meta').content = '#1C1C1E';
+            } else {
+                document.documentElement.classList.remove('dark');
+                elements.themeToggle.textContent = '🌙';
+                document.getElementById('theme-color-meta').content = '#F2F2F7';
+            }
+            renderWorkspace(); persistState();
         };
         
         const adj = (id, d) => { 
@@ -563,16 +745,30 @@
             if(isNaN(v)) return;
             const ui = state.unassigned.indexOf(v);
             if(ui !== -1) {
-                saveState();
+                saveStateToHistory();
                 state.unassigned.splice(ui, 1);
                 state.groups[idx].push(v);
                 state.students[v].isAuto = false;
                 i.value = '';
-                renderWorkspace();
+                renderWorkspace(); persistState();
             } else alert("座號不在名單中或已分配。");
         };
 
-        initSetup();
+        // Service Worker 註冊
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW registration failed:', err));
+            });
+        }
+
+        // 啟動邏輯
+        if (loadState()) {
+            updateAlgoOptions(); 
+            renderGenderSetup(); 
+            renderWorkspace();
+        } else {
+            initSetup();
+        }
     </script>
 </body>
 </html>
