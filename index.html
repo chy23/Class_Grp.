@@ -845,9 +845,6 @@
                     };
                 });
                 
-                if (cachedChangelog.length > 0) {
-                    elements.btnChangelog.innerHTML = `✨ #${cachedChangelog[0].version}`;
-                }
                 
                 return cachedChangelog;
             } catch (error) {
