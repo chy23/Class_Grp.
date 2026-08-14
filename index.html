@@ -134,7 +134,7 @@
             </div>
             <div class="flex items-center gap-3">
                 <button id="btn-changelog" class="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-black/20 rounded-full shadow-sm border border-black/5 dark:border-white/10 active:scale-95 transition-transform font-bold text-sm text-ios-blue dark:text-ios-blueLight">
-                    ✨ v1.2.0
+                    ✨ 更新紀錄
                 </button>
                 <button id="btn-theme-toggle" class="p-3 bg-white dark:bg-black/20 rounded-full shadow-sm border border-black/5 dark:border-white/10 active:scale-95 transition-transform text-xl flex-shrink-0">
                     🌙
@@ -275,48 +275,6 @@
         /**
          * 狀態與元件初始化
          */
-        const changelogData = [
-            {
-                version: "v1.2.0",
-                date: "2026-08-05",
-                title: "大型功能更新：姓名支援、PWA、暗黑模式等",
-                details: [
-                    "支援學生姓名匯入，自動綁定座號與姓名",
-                    "加入自動存檔防呆機制 (LocalStorage)",
-                    "支援自訂組別名稱",
-                    "加入 PWA 支援，可安裝至桌面離線使用",
-                    "新增暗黑模式切換功能",
-                    "自動計算並顯示各組男女比例統計"
-                ],
-                fixes: []
-            },
-            {
-                version: "v1.1.1",
-                date: "2026-08-05",
-                title: "版權宣告更新",
-                details: ["加入隱藏的開發者宣告，保留原創版權"],
-                fixes: []
-            },
-            {
-                version: "v1.1.0",
-                date: "2026-08-05",
-                title: "新增版權浮水印",
-                details: ["於網頁角落新增楊家驊老師版權浮水印，以保障原創心血"],
-                fixes: []
-            },
-            {
-                version: "v1.0.0",
-                date: "2026-08-01",
-                title: "學生分組工具正式上線",
-                details: [
-                    "提供 S 型性別平衡、單一性別、全隨機等多種演算法",
-                    "支援拖曳微調，快速換組",
-                    "支援高畫質海報圖檔、TXT 名單一鍵匯出"
-                ],
-                fixes: ["修正部分行動裝置上拖曳的靈敏度問題"]
-            }
-        ];
-
         const STORAGE_KEY = 'group-tool-state';
         
         let state = {
@@ -827,8 +785,10 @@
         };
 
         // 更新紀錄 Modal 邏輯
-        function renderChangelog() {
-            elements.changelogList.innerHTML = changelogData.map((log, i) => {
+        let cachedChangelog = null;
+
+        function renderChangelog(data) {
+            elements.changelogList.innerHTML = data.map((log, i) => {
                 const isLatest = i === 0;
                 const badgeHtml = isLatest ? `<span class="ml-2 px-2 py-0.5 rounded-full bg-ios-blue text-white text-[10px] font-extrabold uppercase tracking-wider">Latest</span>` : '';
                 
@@ -851,7 +811,7 @@
                         <div class="absolute left-[-9px] top-1 w-4 h-4 rounded-full border-4 border-white dark:border-ios-darkCard ${isLatest ? 'bg-ios-blue' : 'bg-gray-300 dark:bg-gray-600'}"></div>
                         
                         <div class="flex flex-col sm:flex-row sm:items-baseline gap-2 mb-2">
-                            <h3 class="text-lg font-extrabold text-[#1C1C1E] dark:text-white flex items-center">${log.version} ${badgeHtml}</h3>
+                            <h3 class="text-lg font-extrabold text-[#1C1C1E] dark:text-white flex items-center">#${log.version} ${badgeHtml}</h3>
                             <span class="text-xs font-bold text-gray-400">${log.date}</span>
                         </div>
                         
@@ -863,20 +823,53 @@
                     </div>
                 `;
             }).join('');
-            
-            // 更新按鈕上的版號為最新版
-            if(changelogData.length > 0) {
-                elements.btnChangelog.innerHTML = `✨ ${changelogData[0].version}`;
+        }
+
+        async function fetchChangelog() {
+            if (cachedChangelog) return cachedChangelog;
+            try {
+                const response = await fetch('https://api.github.com/repos/chy23/Class_Grp./commits?per_page=50');
+                if (!response.ok) throw new Error('API fetch failed');
+                const commits = await response.json();
+                
+                cachedChangelog = commits.map(c => {
+                    const msgLines = c.commit.message.split('\n').map(s => s.trim()).filter(s => s);
+                    const title = msgLines[0];
+                    const details = msgLines.slice(1).map(l => l.replace(/^[-*]\s*/, ''));
+                    return {
+                        version: c.sha.substring(0, 7),
+                        date: new Date(c.commit.author.date).toLocaleDateString('zh-TW'),
+                        title: title,
+                        details: details,
+                        fixes: []
+                    };
+                });
+                
+                if (cachedChangelog.length > 0) {
+                    elements.btnChangelog.innerHTML = `✨ #${cachedChangelog[0].version}`;
+                }
+                
+                return cachedChangelog;
+            } catch (error) {
+                console.error("Error fetching changelog:", error);
+                return [{
+                    version: "unknown", date: new Date().toLocaleDateString('zh-TW'),
+                    title: "無法取得更新紀錄", details: ["請檢查網路連線或稍後再試。"], fixes: []
+                }];
             }
         }
 
-        function openChangelog() {
-            renderChangelog();
+        async function openChangelog() {
             elements.modalChangelog.classList.remove('hidden');
-            // Allow display to apply before fading in
-            setTimeout(() => {
-                elements.modalChangelog.classList.remove('opacity-0');
-            }, 10);
+            setTimeout(() => { elements.modalChangelog.classList.remove('opacity-0'); }, 10);
+            
+            if (!cachedChangelog) {
+                elements.changelogList.innerHTML = `<div class="flex justify-center items-center h-32 text-ios-gray"><svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-ios-blue" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> 載入中...</div>`;
+                const data = await fetchChangelog();
+                renderChangelog(data);
+            } else {
+                renderChangelog(cachedChangelog);
+            }
         }
 
         function closeChangelog() {
@@ -889,6 +882,9 @@
         elements.btnChangelog.onclick = openChangelog;
         elements.btnCloseChangelog.onclick = closeChangelog;
         elements.overlayChangelog.onclick = closeChangelog;
+
+        // 背景預先載入更新紀錄
+        fetchChangelog();
 
         // Service Worker 註冊
         if ('serviceWorker' in navigator) {
