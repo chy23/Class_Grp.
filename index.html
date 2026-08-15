@@ -18,6 +18,8 @@
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <!-- 引入 canvas-confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- 引入 SheetJS -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     
     <script>
         tailwind.config = {
@@ -167,7 +169,13 @@
             <h2 class="text-xl font-bold mb-6 tracking-tight flex items-center gap-2">⚙️ 基礎設定</h2>
             
             <div class="mb-6">
-                <label class="block text-sm font-bold text-ios-gray mb-1.5 ml-1">名單匯入 (選填)</label>
+                <div class="flex justify-between items-center mb-1.5 ml-1">
+                    <label class="block text-sm font-bold text-ios-gray">名單匯入 (選填)</label>
+                    <label for="excel-upload" class="cursor-pointer flex items-center gap-1.5 text-xs font-bold text-ios-blue dark:text-ios-blueLight bg-ios-blue/10 dark:bg-white/10 px-3 py-1 rounded-full hover:bg-ios-blue/20 dark:hover:bg-white/20 active:scale-95 transition-all">
+                        📂 匯入 Excel / CSV
+                    </label>
+                    <input type="file" id="excel-upload" accept=".xlsx, .xls, .csv" class="hidden">
+                </div>
                 <textarea id="names-input" placeholder="貼上名單，例如：&#10;1 楊小華&#10;2 陳小明" class="w-full h-24 bg-white/40 dark:bg-black/20 border border-white dark:border-white/10 rounded-[20px] p-4 font-bold outline-none focus:ring-2 focus:ring-ios-blue transition-all resize-none shadow-sm dark:text-white placeholder-gray-400 dark:placeholder-gray-600"></textarea>
                 <p class="text-xs text-ios-gray mt-1 ml-1">若輸入名單，下方「總人數」將以名單為準。格式需包含數字(座號)。</p>
             </div>
@@ -830,6 +838,61 @@
                 renderWorkspace(); persistState();
             } else showToast("座號不在名單中或已分配", "error");
         };
+
+        // Excel 匯入邏輯
+        document.getElementById('excel-upload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const json = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+                    
+                    let importedLines = [];
+                    json.forEach(row => {
+                        let seat = null;
+                        let name = null;
+                        
+                        for (let cell of row) {
+                            if (cell === null || cell === undefined || cell === '') continue;
+                            const strCell = String(cell).trim();
+                            if (seat === null && !isNaN(strCell) && Number.isInteger(Number(strCell))) {
+                                seat = strCell;
+                            } else if (seat !== null && name === null && isNaN(strCell) && strCell !== '座號' && strCell !== '姓名') {
+                                name = strCell;
+                            }
+                        }
+                        
+                        if (seat && name) {
+                            importedLines.push(`${seat} ${name}`);
+                        }
+                    });
+                    
+                    if (importedLines.length > 0) {
+                        elements.namesInput.value = importedLines.join('\n');
+                        // 觸發重新解析邏輯
+                        parseNames();
+                        persistState();
+                        initSetup();
+                        showToast(`成功匯入 ${importedLines.length} 筆名單`);
+                    } else {
+                        showToast("找不到符合格式的座號與姓名", "error");
+                    }
+                } catch (err) {
+                    console.error(err);
+                    showToast("檔案讀取失敗，請確認是否為 Excel 格式", "error");
+                }
+                
+                // 重置 file input
+                document.getElementById('excel-upload').value = '';
+            };
+            reader.readAsArrayBuffer(file);
+        });
 
         // Toast 與 Confirm 邏輯
         function showToast(message, type = 'success') {
