@@ -1,0 +1,14 @@
+{
+  "name": "class-grp",
+  "version": "1.0.0",
+  "description": "智慧教學學生分組工具",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "electron:build:mac": "electron-builder --mac --arm64"
+  },
+  "devDependencies": {
+    "electron": "^35.7.5",
+    "electron-builder": "^25.1.8"
+  }
+}

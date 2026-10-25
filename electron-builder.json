@@ -1,0 +1,26 @@
+{
+  "appId": "com.teacher.classgrp",
+  "productName": "教學用學生分組工具",
+  "directories": {
+    "output": "release"
+  },
+  "files": [
+    "index.html",
+    "manifest.json",
+    "icon-192x192.png",
+    "icon-512x512.png",
+    "electron/**/*",
+    "package.json"
+  ],
+  "mac": {
+    "target": [
+      { "target": "dmg", "arch": ["arm64"] },
+      { "target": "zip", "arch": ["arm64"] }
+    ],
+    "icon": "icon-512x512.png",
+    "category": "public.app-category.education",
+    "hardenedRuntime": false,
+    "gatekeeperAssess": false,
+    "identity": null
+  }
+}
