@@ -154,9 +154,20 @@
         .modal-spring {
             transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1) !important;
         }
+
+        /* macOS 桌面版視窗拖移與防呆 */
+        .window-drag {
+            -webkit-app-region: drag !important;
+        }
+        .window-no-drag, button, input, textarea, select, label, .student-pill, a, [contenteditable] {
+            -webkit-app-region: no-drag !important;
+        }
     </style>
 </head>
-<body class="min-h-screen relative px-4 md:px-8 pt-16 pb-16 bg-[#F2F2F7] text-[#1C1C1E] dark:bg-ios-darkBg dark:text-white transition-colors duration-300">
+<body class="min-h-screen relative px-4 md:px-8 pt-12 md:pt-16 pb-16 bg-[#F2F2F7] text-[#1C1C1E] dark:bg-ios-darkBg dark:text-white transition-colors duration-300 select-none">
+
+    <!-- macOS 原生頂部全域拖曳區域 (允許點擊畫面頂部隨意拖移視窗) -->
+    <div class="fixed top-0 left-0 right-0 h-12 z-30 window-drag pointer-events-auto" style="-webkit-app-region: drag;"></div>
 
     <!-- 浮水印 -->
     <div class="absolute top-4 right-5 text-lg font-bold text-gray-500 opacity-25 z-0 pointer-events-none select-none whitespace-nowrap dark:opacity-10">網站建立自楊家驊老師</div>
@@ -167,19 +178,19 @@
     <div class="bg-orb bg-[#D1E8FF]/50 dark:bg-[#007AFF]/30 w-[60vw] h-[60vw] bottom-[-20%] right-[-10%]"></div>
     <div class="bg-orb bg-[#D1FFDF]/40 dark:bg-[#34C759]/20 w-[40vw] h-[40vw] top-[20%] right-[10%]"></div>
 
-    <div id="main-container" class="max-w-6xl mx-auto space-y-6 relative z-10">
+    <div id="main-container" class="max-w-6xl mx-auto space-y-6 relative z-10 select-text">
         
-        <!-- 標題區 -->
-        <header class="bg-white/70 dark:bg-ios-darkCard/60 backdrop-blur-2xl p-8 rounded-[32px] shadow-sm border border-white dark:border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-center md:text-left transition-colors duration-300">
-            <div>
-                <h1 class="text-3xl font-extrabold tracking-tight mb-2 text-[#1C1C1E] dark:text-white">🧑‍🏫 學生分組工具</h1>
-                <p class="text-gray-600 dark:text-gray-400 text-base font-medium">手動優先，智能分配。支援 TXT 與海報圖檔匯出。</p>
+        <!-- 標題區 (支援點擊標題區拖移視窗) -->
+        <header class="bg-white/70 dark:bg-ios-darkCard/60 backdrop-blur-2xl p-8 rounded-[32px] shadow-sm border border-white dark:border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-center md:text-left transition-colors duration-300 window-drag" style="-webkit-app-region: drag;">
+            <div class="window-drag" style="-webkit-app-region: drag;">
+                <h1 class="text-3xl font-extrabold tracking-tight mb-2 text-[#1C1C1E] dark:text-white window-drag" style="-webkit-app-region: drag;">🧑‍🏫 學生分組工具</h1>
+                <p class="text-gray-600 dark:text-gray-400 text-base font-medium window-drag" style="-webkit-app-region: drag;">手動優先，智能分配。支援 TXT 與海報圖檔匯出。</p>
             </div>
-            <div class="flex items-center gap-3">
-                <button id="btn-changelog" class="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-black/20 rounded-full shadow-sm border border-black/5 dark:border-white/10 active:scale-95 transition-transform font-bold text-sm text-ios-blue dark:text-ios-blueLight">
+            <div class="flex items-center gap-3 window-no-drag" style="-webkit-app-region: no-drag;">
+                <button id="btn-changelog" class="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-black/20 rounded-full shadow-sm border border-black/5 dark:border-white/10 active:scale-95 transition-transform font-bold text-sm text-ios-blue dark:text-ios-blueLight window-no-drag" style="-webkit-app-region: no-drag;">
                     ✨ 更新紀錄
                 </button>
-                <button id="btn-theme-toggle" class="p-3 bg-white dark:bg-black/20 rounded-full shadow-sm border border-black/5 dark:border-white/10 active:scale-95 transition-transform text-xl flex-shrink-0">
+                <button id="btn-theme-toggle" class="p-3 bg-white dark:bg-black/20 rounded-full shadow-sm border border-black/5 dark:border-white/10 active:scale-95 transition-transform text-xl flex-shrink-0 window-no-drag" style="-webkit-app-region: no-drag;">
                     🌙
                 </button>
             </div>

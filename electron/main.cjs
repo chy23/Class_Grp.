@@ -12,6 +12,7 @@ function createWindow() {
     title: '智慧教學學生分組工具',
     backgroundColor: '#F2F2F7',
     titleBarStyle: 'hiddenInset',
+    trafficLightPosition: { x: 18, y: 18 },
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
@@ -30,8 +31,15 @@ function createWindow() {
     return { action: 'allow' };
   });
 
+  // 當使用者點擊視窗紅叉叉關閉視窗時，徹底退出軟體進程
+  mainWindow.on('close', () => {
+    mainWindow = null;
+    app.quit();
+  });
+
   mainWindow.on('closed', () => {
     mainWindow = null;
+    app.quit();
   });
 }
 
@@ -43,8 +51,7 @@ app.whenReady().then(() => {
   });
 });
 
+// 所有視窗關閉時，徹底終止並結束程式
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
+  app.quit();
 });
