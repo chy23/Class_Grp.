@@ -17,7 +17,7 @@
       { "target": "dmg", "arch": ["arm64"] },
       { "target": "zip", "arch": ["arm64"] }
     ],
-    "icon": "icon-512x512.png",
+    "icon": "build/icon.icns",
     "category": "public.app-category.education",
     "hardenedRuntime": false,
     "gatekeeperAssess": false,
