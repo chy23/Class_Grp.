@@ -5,7 +5,8 @@
   "main": "electron/main.cjs",
   "scripts": {
     "start": "electron .",
-    "electron:build:mac": "electron-builder --mac --arm64"
+    "electron:build:mac": "electron-builder --mac --arm64",
+    "release:icloud": "npm run electron:build:mac && ditto release/*.dmg \"/Users/chiahua/Library/Mobile Documents/com~apple~CloudDocs/【Home & School】 Cloud/Antigrivity Apps/\" && ditto release/*-mac.zip \"/Users/chiahua/Library/Mobile Documents/com~apple~CloudDocs/【Home & School】 Cloud/Antigrivity Apps/\""
   },
   "devDependencies": {
     "electron": "^35.7.5",
